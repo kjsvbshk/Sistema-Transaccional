@@ -1,0 +1,577 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =========================
+// ORGANIZACIONES Y USUARIOS
+// =========================
+
+model Organizacion {
+  id           BigInt      @id @default(autoincrement())
+  nombre       String      @unique
+  estado       String      @default("activa")
+  creadoEn     DateTime    @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn DateTime   @default(now()) @map("actualizado_en") @db.Timestamptz
+
+  // Relaciones
+  membresias   Membresia[]
+  llavesApi    LlaveApi[]
+  solicitudes  Solicitud[]
+  bitacora     Bitacora[]
+  credencialesProveedor CredencialProveedor[]
+  subscripcionesWebhook SubscripcionWebhook[]
+
+  @@map("organizaciones")
+}
+
+model Usuario {
+  id              BigInt      @id @default(autoincrement())
+  correo          String      @unique @db.Citext
+  nombre          String
+  estado          String      @default("activo")
+  contrasenaHash  String      @map("contrasena_hash")
+  creadoEn        DateTime    @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn   DateTime    @default(now()) @map("actualizado_en") @db.Timestamptz
+
+  // Relaciones
+  membresias      Membresia[]
+  sesiones        Sesion[]
+  bitacoraAutenticacion BitacoraAutenticacion[]
+  billetera       Billetera?
+  llavesApi       LlaveApi[]
+  solicitudes     Solicitud[]
+  bitacora        Bitacora[]
+  eventosSolicitud EventoSolicitud[]
+  entregasWebhook EntregaWebhook[]
+
+  @@map("usuarios")
+}
+
+model Membresia {
+  id              BigInt      @id @default(autoincrement())
+  organizacionId  BigInt      @map("organizacion_id")
+  usuarioId       BigInt      @map("usuario_id")
+  rolDefaultId    BigInt?     @map("rol_default_id")
+  creadoEn        DateTime    @default(now()) @map("creado_en") @db.Timestamptz
+
+  // Relaciones
+  organizacion    Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Cascade)
+  usuario         Usuario      @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([organizacionId, usuarioId], name: "membresias_unicas")
+  @@map("membresias")
+}
+
+// ===================
+// ROLES Y PERMISOS
+// ===================
+
+model Rol {
+  id          BigInt      @id @default(autoincrement())
+  nombre      String      @unique
+  descripcion String?
+
+  // Relaciones
+  rolesPermisos RolesPermisos[]
+
+  @@map("roles")
+}
+
+model Permiso {
+  id          BigInt      @id @default(autoincrement())
+  codigo      String      @unique
+  descripcion String?
+
+  // Relaciones
+  rolesPermisos RolesPermisos[]
+
+  @@map("permisos")
+}
+
+model RolesPermisos {
+  id        BigInt @id @default(autoincrement())
+  rolId     BigInt @map("rol_id")
+  permisoId BigInt @map("permiso_id")
+
+  // Relaciones
+  rol       Rol     @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  permiso   Permiso @relation(fields: [permisoId], references: [id], onDelete: Cascade)
+
+  @@unique([rolId, permisoId], name: "roles_permisos_unicos")
+  @@map("roles_permisos")
+}
+
+// ===================
+// AUTENTICACIÓN / JWT
+// ===================
+
+model Sesion {
+  id                BigInt     @id @default(autoincrement())
+  usuarioId         BigInt     @map("usuario_id")
+  refreshTokenHash  String     @map("refresh_token_hash")
+  ip                String?
+  userAgent         String?    @map("user_agent")
+  revocado          Boolean    @default(false)
+  creadoEn          DateTime   @default(now()) @map("creado_en") @db.Timestamptz
+  expiraEn          DateTime?  @map("expira_en") @db.Timestamptz
+
+  // Relaciones
+  usuario           Usuario    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("sesiones")
+}
+
+model BitacoraAutenticacion {
+  id          BigInt   @id @default(autoincrement())
+  usuarioId   BigInt?  @map("usuario_id")
+  tipoEvento  String   @map("tipo_evento")
+  metadatos   Json     @default("{}")
+  creadoEn    DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  // Relaciones
+  usuario     Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@map("bitacora_autenticacion")
+}
+
+// ======================
+// BILLETERAS SIMULADAS $
+// ======================
+
+model Billetera {
+  id                BigInt   @id @default(autoincrement())
+  usuarioId         BigInt   @unique @map("usuario_id")
+  saldoDolares      Decimal  @default(100.00) @map("saldo_dolares") @db.Decimal(14, 2)
+  reservadoDolares  Decimal  @default(0.00) @map("reservado_dolares") @db.Decimal(14, 2)
+  actualizadoEn     DateTime @default(now()) @map("actualizado_en") @db.Timestamptz
+
+  // Relaciones
+  usuario           Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  transacciones     TransaccionWallet[]
+
+  @@map("billeteras")
+}
+
+model TransaccionWallet {
+  id            BigInt   @id @default(autoincrement())
+  billeteraId   BigInt   @map("billetera_id")
+  tipo          String   // 'deposito', 'retiro', 'apuesta', 'ganancia'
+  monto         Decimal  @db.Decimal(14, 2)
+  descripcion   String?
+  referencia    String?  // ID de apuesta o referencia externa
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  // Relaciones
+  billetera     Billetera @relation(fields: [billeteraId], references: [id], onDelete: Cascade)
+
+  @@map("transacciones_wallet")
+}
+
+// ===================
+// API KEYS Y USO
+// ===================
+
+model LlaveApi {
+  id              BigInt     @id @default(autoincrement())
+  usuarioId       BigInt     @map("usuario_id")
+  organizacionId  BigInt     @map("organizacion_id")
+  hashLlave       String     @unique @map("hash_llave")
+  alcances        String[]   @default([])
+  activa          Boolean    @default(true)
+  ultimoUso       DateTime?  @map("ultimo_uso") @db.Timestamptz
+  creadoEn        DateTime   @default(now()) @map("creado_en") @db.Timestamptz
+
+  // Relaciones
+  usuario         Usuario    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  organizacion    Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Cascade)
+  usoApi          UsoApi[]
+  limitesApi      LimiteApi[]
+
+  @@map("llaves_api")
+}
+
+model UsoApi {
+  id              BigInt   @id @default(autoincrement())
+  llaveId         BigInt   @map("llave_id")
+  periodo         String
+  inicioPeriodo   DateTime @map("inicio_periodo") @db.Timestamptz
+  contador        BigInt   @default(0)
+
+  // Relaciones
+  llave           LlaveApi @relation(fields: [llaveId], references: [id], onDelete: Cascade)
+
+  @@unique([llaveId, periodo, inicioPeriodo], name: "uso_api_unico")
+  @@map("uso_api")
+}
+
+model LimiteApi {
+  id                BigInt   @id @default(autoincrement())
+  llaveId           BigInt   @map("llave_id")
+  inicioVentana     DateTime @map("inicio_ventana") @db.Timestamptz
+  duracionSegundos  Int      @map("duracion_segundos")
+  capacidad         Int
+  tokens            Int
+
+  // Relaciones
+  llave             LlaveApi @relation(fields: [llaveId], references: [id], onDelete: Cascade)
+
+  @@unique([llaveId, inicioVentana, duracionSegundos], name: "limites_unicos")
+  @@map("limites_api")
+}
+
+// ===============
+// AUDITORÍA
+// ===============
+
+model Bitacora {
+  id              BigInt   @id @default(autoincrement())
+  organizacionId  BigInt?  @map("organizacion_id")
+  usuarioActorId  BigInt?  @map("usuario_actor_id")
+  entidad         String
+  entidadId       String   @map("entidad_id")
+  accion          String
+  diff            Json     @default("{}")
+  creadoEn        DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  // Relaciones
+  organizacion    Organizacion? @relation(fields: [organizacionId], references: [id], onDelete: SetNull)
+  usuarioActor    Usuario?      @relation(fields: [usuarioActorId], references: [id], onDelete: SetNull)
+
+  @@map("bitacora")
+}
+
+// ===============
+// CATALOGO DEPORTIVO
+// ===============
+
+model Liga {
+  id      BigInt @id @default(autoincrement())
+  deporte String
+  nombre  String
+  pais    String?
+
+  // Relaciones
+  eventos Evento[]
+
+  @@unique([deporte, nombre], name: "ligas_unicas")
+  @@map("ligas")
+}
+
+model Equipo {
+  id                BigInt  @id @default(autoincrement())
+  nombre            String
+  pais              String?
+  referenciaExterna String? @map("referencia_externa")
+
+  // Relaciones
+  eventosLocal      Evento[] @relation("EquipoLocal")
+  eventosVisitante  Evento[] @relation("EquipoVisitante")
+
+  @@map("equipos")
+}
+
+model Evento {
+  id                  BigInt    @id @default(autoincrement())
+  ligaId              BigInt    @map("liga_id")
+  equipoLocalId       BigInt    @map("equipo_local_id")
+  equipoVisitanteId   BigInt    @map("equipo_visitante_id")
+  iniciaEn            DateTime  @map("inicia_en") @db.Timestamptz
+  referenciaExterna   String?   @map("referencia_externa")
+
+  // Relaciones
+  liga                Liga      @relation(fields: [ligaId], references: [id])
+  equipoLocal         Equipo    @relation("EquipoLocal", fields: [equipoLocalId], references: [id])
+  equipoVisitante     Equipo    @relation("EquipoVisitante", fields: [equipoVisitanteId], references: [id])
+  mercados            Mercado[]
+  solicitudes         Solicitud[]
+
+  @@unique([ligaId, equipoLocalId, equipoVisitanteId, iniciaEn], name: "eventos_unicos")
+  @@map("eventos")
+}
+
+model Mercado {
+  id        BigInt   @id @default(autoincrement())
+  eventoId  BigInt   @map("evento_id")
+  tipoMercado String @map("tipo_mercado")
+  estado    String   @default("abierto")
+  creadoEn  DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  // Relaciones
+  evento    Evento   @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  parametros ParametroMercado[]
+  solicitudes Solicitud[]
+
+  @@map("mercados")
+}
+
+model ParametroMercado {
+  id        BigInt @id @default(autoincrement())
+  mercadoId BigInt @map("mercado_id")
+  clave     String
+  valor     String
+
+  // Relaciones
+  mercado   Mercado @relation(fields: [mercadoId], references: [id], onDelete: Cascade)
+
+  @@unique([mercadoId, clave], name: "parametros_unicos")
+  @@map("parametros_mercado")
+}
+
+// =======================
+// APUESTAS Y SOLICITUDES
+// =======================
+
+model ClaveIdempotencia {
+  id                    BigInt   @id @default(autoincrement())
+  clave                 String   @unique
+  vistoPorPrimeraVez    DateTime @default(now()) @map("visto_por_primera_vez") @db.Timestamptz
+  bloqueadoPor          String?  @map("bloqueado_por")
+  resultado             Json?
+
+  @@map("claves_idempotencia")
+}
+
+model Solicitud {
+  id              BigInt   @id @default(autoincrement())
+  organizacionId  BigInt   @map("organizacion_id")
+  usuarioId       BigInt   @map("usuario_id")
+  eventoId        BigInt   @map("evento_id")
+  mercadoId       BigInt   @map("mercado_id")
+  clave           String   @unique
+  versionModelo   String   @map("version_modelo")
+  estado          String   // 'recibida', 'en_proceso', 'completada', 'fallida'
+  metaCliente     Json     @default("{}") @map("meta_cliente")
+  creadoEn        DateTime @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn   DateTime @default(now()) @map("actualizado_en") @db.Timestamptz
+
+  // Relaciones
+  organizacion    Organizacion @relation(fields: [organizacionId], references: [id])
+  usuario         Usuario      @relation(fields: [usuarioId], references: [id])
+  evento          Evento       @relation(fields: [eventoId], references: [id])
+  mercado         Mercado      @relation(fields: [mercadoId], references: [id])
+  eventosSolicitud EventoSolicitud[]
+  cuotasSnapshots CuotaSnapshot[]
+  predicciones    Prediccion[]
+
+  @@map("solicitudes")
+}
+
+model EventoSolicitud {
+  id              BigInt   @id @default(autoincrement())
+  solicitudId     BigInt   @map("solicitud_id")
+  usuarioActorId  BigInt?  @map("usuario_actor_id")
+  deEstado        String?  @map("de_estado")
+  aEstado         String   @map("a_estado")
+  razon           String?
+  creadoEn        DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  // Relaciones
+  solicitud       Solicitud @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  usuarioActor    Usuario?  @relation(fields: [usuarioActorId], references: [id], onDelete: SetNull)
+
+  @@map("eventos_solicitud")
+}
+
+// =========
+// CUOTAS
+// =========
+
+model CuotaSnapshot {
+  id              BigInt   @id @default(autoincrement())
+  solicitudId     BigInt   @map("solicitud_id")
+  tomadoEn        DateTime @default(now()) @map("tomado_en") @db.Timestamptz
+  resumenFuente   Json     @default("{}") @map("resumen_fuente")
+
+  // Relaciones
+  solicitud       Solicitud @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  cuotasLineas    CuotaLinea[]
+
+  @@map("cuotas_snapshots")
+}
+
+model CuotaLinea {
+  id                    BigInt   @id @default(autoincrement())
+  snapshotId            BigInt   @map("snapshot_id")
+  proveedorId           BigInt   @map("proveedor_id")
+  seleccion             String
+  precio                Decimal  @db.Decimal(10, 4)
+  probabilidadImplicita Decimal? @map("probabilidad_implicita") @db.Decimal(6, 4)
+  recolectadoEn         DateTime @default(now()) @map("recolectado_en") @db.Timestamptz
+
+  // Relaciones
+  snapshot              CuotaSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@map("cuotas_lineas")
+}
+
+// ==============
+// PREDICCIONES
+// ==============
+
+model VersionModelo {
+  id          BigInt @id @default(autoincrement())
+  version     String @unique
+  desplegadoEn DateTime @map("desplegado_en") @db.Timestamptz
+  metadata    Json   @default("{}")
+
+  // Relaciones
+  predicciones Prediccion[]
+
+  @@map("versiones_modelo")
+}
+
+model Prediccion {
+  id                BigInt   @id @default(autoincrement())
+  solicitudId       BigInt   @unique @map("solicitud_id")
+  versionModeloId   BigInt   @map("version_modelo_id")
+  payload           Json
+  puntajeCalidad    Decimal? @map("puntaje_calidad") @db.Decimal(6, 4)
+  expiraEn          DateTime? @map("expira_en") @db.Timestamptz
+  creadoEn          DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  // Relaciones
+  solicitud         Solicitud     @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  versionModelo     VersionModelo @relation(fields: [versionModeloId], references: [id])
+
+  @@map("predicciones")
+}
+
+// ==============
+// PROVEEDORES
+// ==============
+
+model Proveedor {
+  id        BigInt   @id @default(autoincrement())
+  nombre    String   @unique
+  urlBase   String   @map("url_base")
+  activo    Boolean  @default(true)
+  creadoEn  DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  // Relaciones
+  credenciales CredencialProveedor[]
+  endpoints    EndpointProveedor[]
+  salud        SaludProveedor[]
+
+  @@map("proveedores")
+}
+
+model CredencialProveedor {
+  id              BigInt @id @default(autoincrement())
+  proveedorId     BigInt @map("proveedor_id")
+  organizacionId  BigInt @map("organizacion_id")
+  apiKeyMascarada String? @map("api_key_mascarada")
+  meta            Json   @default("{}")
+  creadoEn        DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  // Relaciones
+  proveedor       Proveedor   @relation(fields: [proveedorId], references: [id], onDelete: Cascade)
+  organizacion    Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Cascade)
+
+  @@unique([proveedorId, organizacionId], name: "credenciales_unicas")
+  @@map("credenciales_proveedor")
+}
+
+model EndpointProveedor {
+  id          BigInt @id @default(autoincrement())
+  proveedorId BigInt @map("proveedor_id")
+  tipoEndpoint String @map("tipo_endpoint")
+  ruta        String
+  timeoutMs   Int    @default(500) @map("timeout_ms")
+
+  // Relaciones
+  proveedor   Proveedor @relation(fields: [proveedorId], references: [id], onDelete: Cascade)
+
+  @@unique([proveedorId, tipoEndpoint, ruta], name: "endpoints_unicos")
+  @@map("endpoints_proveedor")
+}
+
+model SaludProveedor {
+  id           BigInt   @id @default(autoincrement())
+  proveedorId  BigInt   @map("proveedor_id")
+  chequeadoEn  DateTime @default(now()) @map("chequeado_en") @db.Timestamptz
+  latenciaMs   Int?     @map("latencia_ms")
+  ok           Boolean
+  codigoError  String?  @map("codigo_error")
+
+  // Relaciones
+  proveedor    Proveedor @relation(fields: [proveedorId], references: [id], onDelete: Cascade)
+
+  @@map("salud_proveedor")
+}
+
+// ====================
+// MENSAJERÍA / OUTBOX
+// ====================
+
+model Outbox {
+  id            BigInt   @id @default(autoincrement())
+  tipoAgregado  String   @map("tipo_agregado")
+  agregadoId    BigInt   @map("agregado_id")
+  tipoEvento    String   @map("tipo_evento")
+  payload       Json
+  publicado     Boolean  @default(false)
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  // Relaciones
+  entregasWebhook EntregaWebhook[]
+
+  @@map("outbox")
+}
+
+model BandejaEntrada {
+  id                BigInt   @id @default(autoincrement())
+  fuente            String
+  idEventoExterno   String   @map("id_evento_externo")
+  recibidoEn        DateTime @default(now()) @map("recibido_en") @db.Timestamptz
+  estado            String   @default("procesado")
+
+  @@unique([fuente, idEventoExterno], name: "bandeja_unica")
+  @@map("bandeja_entrada")
+}
+
+// ====================
+// WEBHOOKS
+// ====================
+
+model SubscripcionWebhook {
+  id            BigInt   @id @default(autoincrement())
+  organizacionId BigInt  @map("organizacion_id")
+  tipoEvento    String   @map("tipo_evento")
+  urlDestino    String   @map("url_destino")
+  secreto       String
+  activo        Boolean  @default(true)
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  // Relaciones
+  organizacion  Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Cascade)
+  entregas      EntregaWebhook[]
+
+  @@map("subscripciones_webhook")
+}
+
+model EntregaWebhook {
+  id                BigInt    @id @default(autoincrement())
+  subscripcionId    BigInt    @map("subscripcion_id")
+  outboxId          BigInt    @map("outbox_id")
+  usuarioId         BigInt?   @map("usuario_id")
+  intento           Int       @default(1)
+  estado            String
+  codigoRespuesta   Int?      @map("codigo_respuesta")
+  proximoReintento  DateTime? @map("proximo_reintento") @db.Timestamptz
+  creadoEn          DateTime  @default(now()) @map("creado_en") @db.Timestamptz
+
+  // Relaciones
+  subscripcion      SubscripcionWebhook @relation(fields: [subscripcionId], references: [id], onDelete: Cascade)
+  outbox            Outbox              @relation(fields: [outboxId], references: [id], onDelete: Cascade)
+  usuario           Usuario?            @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@map("entregas_webhook")
+}
