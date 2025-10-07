@@ -8,5 +8,5 @@ export class AssignRoleDto {
   })
   @IsNumber({}, { message: 'El ID del rol debe ser un número' })
   @IsPositive({ message: 'El ID del rol debe ser un número positivo' })
-  roleId: number;
+  roleId!: number;
 }

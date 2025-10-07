@@ -230,7 +230,7 @@ export class EventsService {
         equipoLocalId: BigInt(homeTeamId),
         equipoVisitanteId: BigInt(awayTeamId),
         iniciaEn: new Date(startTime),
-        referenciaExterna: externalReference,
+        referenciaExterna: externalReference ?? null,
       },
     });
 
@@ -279,8 +279,8 @@ export class EventsService {
     const event = await this.prisma.evento.update({
       where: { id },
       data: {
-        iniciaEn: startTime ? new Date(startTime) : undefined,
-        referenciaExterna: externalReference,
+        ...(startTime && { iniciaEn: new Date(startTime) }),
+        ...(externalReference !== undefined && { referenciaExterna: externalReference ?? null }),
       },
     });
 

@@ -8,7 +8,7 @@ export class CreateEventDto {
   })
   @IsNumber({}, { message: 'El ID de la liga debe ser un número' })
   @IsPositive({ message: 'El ID de la liga debe ser positivo' })
-  leagueId: number;
+  leagueId!: number;
 
   @ApiProperty({
     description: 'ID del equipo local',
@@ -16,7 +16,7 @@ export class CreateEventDto {
   })
   @IsNumber({}, { message: 'El ID del equipo local debe ser un número' })
   @IsPositive({ message: 'El ID del equipo local debe ser positivo' })
-  homeTeamId: number;
+  homeTeamId!: number;
 
   @ApiProperty({
     description: 'ID del equipo visitante',
@@ -24,14 +24,14 @@ export class CreateEventDto {
   })
   @IsNumber({}, { message: 'El ID del equipo visitante debe ser un número' })
   @IsPositive({ message: 'El ID del equipo visitante debe ser positivo' })
-  awayTeamId: number;
+  awayTeamId!: number;
 
   @ApiProperty({
     description: 'Fecha y hora de inicio del evento',
     example: '2024-01-15T20:00:00Z',
   })
   @IsDateString({}, { message: 'La fecha de inicio debe ser una fecha válida' })
-  startTime: string;
+  startTime!: string;
 
   @ApiProperty({
     description: 'Referencia externa del evento',

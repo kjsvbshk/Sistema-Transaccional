@@ -11,7 +11,7 @@ export class WithdrawDto {
   @IsNumber({}, { message: 'El monto debe ser un número' })
   @Min(0.01, { message: 'El monto mínimo es $0.01' })
   @Max(5000, { message: 'El monto máximo es $5,000' })
-  amount: number;
+  amount!: number;
 
   @ApiProperty({
     description: 'Descripción del retiro',

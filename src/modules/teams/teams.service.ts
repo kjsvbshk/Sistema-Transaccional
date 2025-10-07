@@ -134,8 +134,8 @@ export class TeamsService {
     const team = await this.prisma.equipo.create({
       data: {
         nombre: name,
-        pais: country,
-        referenciaExterna: externalReference,
+        pais: country ?? null,
+        referenciaExterna: externalReference ?? null,
       },
     });
 
@@ -161,13 +161,14 @@ export class TeamsService {
       throw new NotFoundException('Equipo no encontrado');
     }
 
+    const updateData: any = {};
+    if (name !== undefined) updateData.nombre = name;
+    if (country !== undefined) updateData.pais = country ?? null;
+    if (externalReference !== undefined) updateData.referenciaExterna = externalReference ?? null;
+
     const team = await this.prisma.equipo.update({
       where: { id },
-      data: {
-        nombre: name,
-        pais: country,
-        referenciaExterna: externalReference,
-      },
+      data: updateData,
     });
 
     this.logger.log(`Equipo actualizado: ${team.nombre}`);

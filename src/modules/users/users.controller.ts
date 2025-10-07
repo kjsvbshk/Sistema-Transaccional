@@ -48,7 +48,7 @@ export class UsersController {
     return this.usersService.findAll({ 
       page: validPage, 
       limit: validLimit, 
-      search 
+      search: search ?? '' 
     });
   }
 

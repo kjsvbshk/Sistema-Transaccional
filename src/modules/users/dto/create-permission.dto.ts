@@ -14,7 +14,7 @@ export class CreatePermissionDto {
   @Matches(/^[a-z][a-z0-9._]*[a-z0-9]$/, {
     message: 'El código debe seguir el formato: module.action (ej: users.create)',
   })
-  code: string;
+  code!: string;
 
   @ApiProperty({
     description: 'Descripción del permiso',

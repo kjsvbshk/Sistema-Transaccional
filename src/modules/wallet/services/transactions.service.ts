@@ -21,8 +21,8 @@ export class TransactionsService {
         billeteraId: data.billeteraId,
         tipo: data.tipo,
         monto: data.monto,
-        descripcion: data.descripcion,
-        referencia: data.referencia,
+        descripcion: data.descripcion ?? null,
+        referencia: data.referencia ?? null,
       },
     });
 

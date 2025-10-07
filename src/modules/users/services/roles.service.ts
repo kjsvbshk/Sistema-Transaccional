@@ -90,7 +90,7 @@ export class RolesService {
     const role = await this.prisma.rol.create({
       data: {
         nombre: name,
-        descripcion: description,
+        descripcion: description ?? null,
       },
     });
 
@@ -126,12 +126,13 @@ export class RolesService {
       }
     }
 
+    const updateData: any = {};
+    if (name !== undefined) updateData.nombre = name;
+    if (description !== undefined) updateData.descripcion = description ?? null;
+
     const role = await this.prisma.rol.update({
       where: { id },
-      data: {
-        nombre: name,
-        descripcion: description,
-      },
+      data: updateData,
     });
 
     this.logger.log(`Rol actualizado: ${role.nombre}`);

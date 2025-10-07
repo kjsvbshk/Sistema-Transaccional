@@ -310,7 +310,7 @@ async function main() {
 
   if (premierLeague && manUnited && manCity && liverpool) {
     // Evento pasado
-    const pastEvent = await prisma.evento.upsert({
+    await prisma.evento.upsert({
       where: {
         eventos_unicos: {
           ligaId: premierLeague.id,

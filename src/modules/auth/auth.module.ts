@@ -19,12 +19,21 @@ import { JwtService } from './services/jwt.service';
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('jwt.secret'),
-        signOptions: {
-          expiresIn: configService.get<string>('jwt.accessTokenExpiresIn'),
-        },
-      }),
+      useFactory: async (configService: ConfigService) => {
+        const secret = configService.get<string>('jwt.secret');
+        const expiresIn = configService.get<string>('jwt.accessTokenExpiresIn');
+        
+        if (!secret) {
+          throw new Error('JWT secret is required');
+        }
+        
+        return {
+          secret,
+          signOptions: {
+            expiresIn: expiresIn || '15m',
+          },
+        };
+      },
       inject: [ConfigService],
     }),
     ThrottlerModule.forRoot([

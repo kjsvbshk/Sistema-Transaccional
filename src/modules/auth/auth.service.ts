@@ -2,15 +2,12 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
-  BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PasswordService } from './services/password.service';
 import { JwtService } from './services/jwt.service';
 import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
 
 export interface AuthResult {
   user: {
@@ -32,7 +29,6 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly passwordService: PasswordService,
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<AuthResult> {

@@ -124,7 +124,7 @@ export class LeaguesService {
       data: {
         deporte: sport,
         nombre: name,
-        pais: country,
+        pais: country ?? null,
       },
     });
 
@@ -166,13 +166,14 @@ export class LeaguesService {
       }
     }
 
+    const updateData: any = {};
+    if (sport !== undefined) updateData.deporte = sport;
+    if (name !== undefined) updateData.nombre = name;
+    if (country !== undefined) updateData.pais = country ?? null;
+
     const league = await this.prisma.liga.update({
       where: { id },
-      data: {
-        deporte: sport,
-        nombre: name,
-        pais: country,
-      },
+      data: updateData,
     });
 
     this.logger.log(`Liga actualizada: ${league.deporte} - ${league.nombre}`);

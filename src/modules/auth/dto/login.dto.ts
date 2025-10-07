@@ -7,7 +7,7 @@ export class LoginDto {
     example: 'usuario@ejemplo.com',
   })
   @IsEmail({}, { message: 'Debe proporcionar un email válido' })
-  correo: string;
+  correo!: string;
 
   @ApiProperty({
     description: 'Contraseña del usuario',
@@ -16,5 +16,5 @@ export class LoginDto {
   })
   @IsString({ message: 'La contraseña debe ser una cadena de texto' })
   @MinLength(1, { message: 'La contraseña es requerida' })
-  contrasena: string;
+  contrasena!: string;
 }

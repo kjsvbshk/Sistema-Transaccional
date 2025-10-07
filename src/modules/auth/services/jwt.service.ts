@@ -21,8 +21,8 @@ export class JwtService implements OnModuleInit {
   private async loadKeys(): Promise<void> {
     try {
       // Cargar claves RSA desde archivos
-      const privateKeyPath = process.env.JWT_PRIVATE_KEY_PATH || join(process.cwd(), 'keys', 'private.pem');
-      const publicKeyPath = process.env.JWT_PUBLIC_KEY_PATH || join(process.cwd(), 'keys', 'public.pem');
+      const privateKeyPath = process.env['JWT_PRIVATE_KEY_PATH'] || join(process.cwd(), 'keys', 'private.pem');
+      const publicKeyPath = process.env['JWT_PUBLIC_KEY_PATH'] || join(process.cwd(), 'keys', 'public.pem');
       
       const privateKeyPem = readFileSync(privateKeyPath, 'utf8');
       const publicKeyPem = readFileSync(publicKeyPath, 'utf8');
@@ -37,7 +37,7 @@ export class JwtService implements OnModuleInit {
     } catch (error) {
       this.logger.error('❌ Failed to load JWT keys', error);
       // Fallback a clave secreta simple si las claves RSA no están disponibles
-      const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key-for-development-only';
+      const secret = process.env['JWT_SECRET'] || 'your-super-secret-jwt-key-for-development-only';
       this.privateKey = secret;
       this.publicKey = secret;
       this.isRSA = false;
@@ -159,7 +159,7 @@ export class JwtService implements OnModuleInit {
   async verifyRefreshToken(token: string): Promise<JWTPayload> {
     const payload = await this.verifyToken(token);
 
-    if (payload.type !== 'refresh') {
+    if (payload['type'] !== 'refresh') {
       throw new Error('Invalid token type');
     }
 
@@ -172,7 +172,7 @@ export class JwtService implements OnModuleInit {
   async verifyAccessToken(token: string): Promise<JWTPayload> {
     const payload = await this.verifyToken(token);
 
-    if (payload.type !== 'access') {
+    if (payload['type'] !== 'access') {
       throw new Error('Invalid token type');
     }
 
@@ -189,7 +189,7 @@ export class JwtService implements OnModuleInit {
       throw new Error('Invalid expiration format');
     }
 
-    const value = parseInt(match[1], 10);
+    const value = parseInt(match[1] || '0', 10);
     const unit = match[2];
 
     switch (unit) {

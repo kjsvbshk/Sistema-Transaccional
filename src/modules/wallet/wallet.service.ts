@@ -74,7 +74,7 @@ export class WalletService {
 
       // Actualizar saldo
       const newBalance = Number(wallet.saldoDolares) + amount;
-      const updatedWallet = await prisma.billetera.update({
+      await prisma.billetera.update({
         where: { id: wallet.id },
         data: {
           saldoDolares: newBalance,
@@ -135,7 +135,7 @@ export class WalletService {
 
       // Actualizar saldo
       const newBalance = currentBalance - amount;
-      const updatedWallet = await prisma.billetera.update({
+      await prisma.billetera.update({
         where: { id: wallet.id },
         data: {
           saldoDolares: newBalance,
@@ -185,7 +185,7 @@ export class WalletService {
 
       // Mover dinero de disponible a reservado
       const newReserved = currentReserved + amount;
-      const updatedWallet = await prisma.billetera.update({
+      await prisma.billetera.update({
         where: { id: wallet.id },
         data: {
           reservadoDolares: newReserved,
@@ -281,7 +281,7 @@ export class WalletService {
       const newReserved = currentReserved - amount;
       const newBalance = Number(wallet.saldoDolares) - amount;
 
-      const updatedWallet = await prisma.billetera.update({
+      await prisma.billetera.update({
         where: { id: wallet.id },
         data: {
           saldoDolares: newBalance,

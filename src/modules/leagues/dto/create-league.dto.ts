@@ -11,7 +11,7 @@ export class CreateLeagueDto {
   @IsString({ message: 'El deporte debe ser una cadena de texto' })
   @MinLength(2, { message: 'El deporte debe tener al menos 2 caracteres' })
   @MaxLength(50, { message: 'El deporte no puede exceder 50 caracteres' })
-  sport: string;
+  sport!: string;
 
   @ApiProperty({
     description: 'Nombre de la liga',
@@ -22,7 +22,7 @@ export class CreateLeagueDto {
   @IsString({ message: 'El nombre debe ser una cadena de texto' })
   @MinLength(2, { message: 'El nombre debe tener al menos 2 caracteres' })
   @MaxLength(100, { message: 'El nombre no puede exceder 100 caracteres' })
-  name: string;
+  name!: string;
 
   @ApiProperty({
     description: 'País de la liga',

@@ -8,7 +8,7 @@ export class CreateBetDto {
   })
   @IsNumber({}, { message: 'El ID del evento debe ser un número' })
   @IsPositive({ message: 'El ID del evento debe ser positivo' })
-  eventId: number;
+  eventId!: number;
 
   @ApiProperty({
     description: 'ID del mercado de apuestas',
@@ -16,7 +16,7 @@ export class CreateBetDto {
   })
   @IsNumber({}, { message: 'El ID del mercado debe ser un número' })
   @IsPositive({ message: 'El ID del mercado debe ser positivo' })
-  marketId: number;
+  marketId!: number;
 
   @ApiProperty({
     description: 'Monto de la apuesta en dólares',
@@ -27,7 +27,7 @@ export class CreateBetDto {
   @IsNumber({}, { message: 'El monto debe ser un número' })
   @Min(1, { message: 'El monto mínimo es $1' })
   @Max(1000, { message: 'El monto máximo es $1,000' })
-  amount: number;
+  amount!: number;
 
   @ApiProperty({
     description: 'Selección de la apuesta',
@@ -35,14 +35,14 @@ export class CreateBetDto {
     examples: ['1', 'X', '2', 'Over 2.5', 'Under 2.5', 'Yes', 'No'],
   })
   @IsString({ message: 'La selección debe ser una cadena de texto' })
-  selection: string;
+  selection!: string;
 
   @ApiProperty({
     description: 'Clave de idempotencia para evitar duplicados',
     example: 'bet_1234567890_abc123',
   })
   @IsString({ message: 'La clave de idempotencia debe ser una cadena de texto' })
-  requestKey: string;
+  requestKey!: string;
 
   @ApiProperty({
     description: 'Versión del modelo de predicción',

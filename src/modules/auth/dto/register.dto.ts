@@ -7,7 +7,7 @@ export class RegisterDto {
     example: 'usuario@ejemplo.com',
   })
   @IsEmail({}, { message: 'Debe proporcionar un email válido' })
-  correo: string;
+  correo!: string;
 
   @ApiProperty({
     description: 'Nombre completo del usuario',
@@ -18,7 +18,7 @@ export class RegisterDto {
   @IsString({ message: 'El nombre debe ser una cadena de texto' })
   @MinLength(2, { message: 'El nombre debe tener al menos 2 caracteres' })
   @MaxLength(100, { message: 'El nombre no puede exceder 100 caracteres' })
-  nombre: string;
+  nombre!: string;
 
   @ApiProperty({
     description: 'Contraseña del usuario',
@@ -35,5 +35,5 @@ export class RegisterDto {
         'La contraseña debe contener al menos una letra minúscula, una mayúscula, un número y un carácter especial',
     },
   )
-  contrasena: string;
+  contrasena!: string;
 }

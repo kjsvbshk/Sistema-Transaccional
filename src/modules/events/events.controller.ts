@@ -48,7 +48,12 @@ export class EventsController {
     const league = leagueParam ? parseInt(leagueParam, 10) : undefined;
     const team = teamParam ? parseInt(teamParam, 10) : undefined;
     
-    return this.eventsService.findAll({ page, limit, status, league, team });
+    const options: any = { page, limit };
+    if (status) options.status = status;
+    if (league) options.league = league;
+    if (team) options.team = team;
+    
+    return this.eventsService.findAll(options);
   }
 
   @Get(':id')

@@ -7,7 +7,7 @@ export class CreateUserDto {
     example: 'usuario@ejemplo.com',
   })
   @IsEmail({}, { message: 'Debe proporcionar un email válido' })
-  email: string;
+  email!: string;
 
   @ApiProperty({
     description: 'Nombre completo del usuario',
@@ -18,7 +18,7 @@ export class CreateUserDto {
   @IsString({ message: 'El nombre debe ser una cadena de texto' })
   @MinLength(2, { message: 'El nombre debe tener al menos 2 caracteres' })
   @MaxLength(100, { message: 'El nombre no puede exceder 100 caracteres' })
-  name: string;
+  name!: string;
 
   @ApiProperty({
     description: 'Contraseña del usuario',
@@ -28,7 +28,7 @@ export class CreateUserDto {
   @IsString({ message: 'La contraseña debe ser una cadena de texto' })
   @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
   @MaxLength(128, { message: 'La contraseña no puede exceder 128 caracteres' })
-  password: string;
+  password!: string;
 
   @ApiProperty({
     description: 'Estado del usuario',

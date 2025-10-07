@@ -34,7 +34,7 @@ export class OddsService {
       return null;
     }
 
-    const odds = {};
+    const odds: Record<string, any> = {};
 
     for (const market of event.mercados) {
       odds[market.tipoMercado] = await this.generateMarketOdds(market.tipoMercado);
@@ -43,7 +43,7 @@ export class OddsService {
     return odds;
   }
 
-  private async generateMockOdds(eventId: bigint, marketId: bigint, selection: string): Promise<OddsData> {
+  private async generateMockOdds(_eventId: bigint, _marketId: bigint, selection: string): Promise<OddsData> {
     // Generar cuotas mock basadas en el tipo de mercado y selección
     const baseOdds = this.getBaseOddsForSelection(selection);
     const variation = (Math.random() - 0.5) * 0.2; // ±10% de variación
@@ -80,7 +80,7 @@ export class OddsService {
       },
     };
 
-    return marketOdds[marketType] || {};
+    return (marketOdds as any)[marketType] || {};
   }
 
   private getBaseOddsForSelection(selection: string): number {
@@ -117,7 +117,7 @@ export class OddsService {
       'Away +1': 1.5,
     };
 
-    return baseOddsMap[selection] || 2.0; // Default odds
+    return (baseOddsMap as any)[selection] || 2.0; // Default odds
   }
 
   async collectOddsFromProviders(eventId: bigint, marketId: bigint) {
@@ -143,7 +143,7 @@ export class OddsService {
     await new Promise(resolve => setTimeout(resolve, Math.random() * 1000));
 
     const selections = ['1', 'X', '2', 'Over 2.5', 'Under 2.5'];
-    const odds = {};
+    const odds: Record<string, any> = {};
 
     for (const selection of selections) {
       const baseOdds = this.getBaseOddsForSelection(selection);

@@ -11,7 +11,7 @@ export class DepositDto {
   @IsNumber({}, { message: 'El monto debe ser un número' })
   @Min(0.01, { message: 'El monto mínimo es $0.01' })
   @Max(10000, { message: 'El monto máximo es $10,000' })
-  amount: number;
+  amount!: number;
 
   @ApiProperty({
     description: 'Descripción del depósito',

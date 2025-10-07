@@ -2,7 +2,6 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -251,15 +250,6 @@ export class UsersService {
     if (!role) {
       throw new NotFoundException('Rol no encontrado');
     }
-
-    // Verificar si ya tiene el rol asignado
-    const existingAssignment = await this.prisma.rolesPermisos.findFirst({
-      where: {
-        rolId: roleId,
-        // Aquí necesitaríamos una tabla de usuarios_roles para manejar la asignación
-        // Por ahora, solo verificamos que el rol existe
-      },
-    });
 
     // TODO: Implementar tabla de usuarios_roles para asignar roles a usuarios
     // Por ahora, solo retornamos éxito

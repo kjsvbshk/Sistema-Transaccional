@@ -15,7 +15,6 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
@@ -111,7 +110,7 @@ export class AuthController {
     status: 429,
     description: 'Demasiados intentos de login',
   })
-  async login(@Body(ValidationPipe) loginDto: LoginDto, @Request() req) {
+  async login(@Body(ValidationPipe) _loginDto: LoginDto, @Request() req: any) {
     return this.authService.login(req.user);
   }
 
@@ -141,7 +140,7 @@ export class AuthController {
     status: 401,
     description: 'Refresh token inválido o expirado',
   })
-  async refresh(@Request() req) {
+  async refresh(@Request() req: any) {
     return this.authService.refreshToken(req.user);
   }
 
@@ -171,7 +170,7 @@ export class AuthController {
     status: 401,
     description: 'Token de acceso inválido',
   })
-  async logout(@Request() req) {
+  async logout(@Request() req: any) {
     return this.authService.logout(req.user);
   }
 
@@ -206,7 +205,7 @@ export class AuthController {
     status: 401,
     description: 'Token de acceso inválido o usuario no encontrado',
   })
-  async getCurrentUser(@Request() req) {
+  async getCurrentUser(@Request() req: any) {
     return this.authService.getCurrentUser(req.user.id);
   }
 }

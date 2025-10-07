@@ -54,7 +54,7 @@ export class PermissionsService {
     const permission = await this.prisma.permiso.create({
       data: {
         codigo: code,
-        descripcion: description,
+        descripcion: description ?? null,
       },
     });
 
@@ -90,12 +90,13 @@ export class PermissionsService {
       }
     }
 
+    const updateData: any = {};
+    if (code !== undefined) updateData.codigo = code;
+    if (description !== undefined) updateData.descripcion = description ?? null;
+
     const permission = await this.prisma.permiso.update({
       where: { id },
-      data: {
-        codigo: code,
-        descripcion: description,
-      },
+      data: updateData,
     });
 
     this.logger.log(`Permiso actualizado: ${permission.codigo}`);

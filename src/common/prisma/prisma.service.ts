@@ -9,10 +9,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     super({
       datasources: {
         db: {
-          url: process.env.DATABASE_URL + '?connection_limit=20&pool_timeout=20&connect_timeout=10'
+          url: process.env['DATABASE_URL'] + '?connection_limit=20&pool_timeout=20&connect_timeout=10'
         }
       },
-      log: process.env.NODE_ENV === 'development' ? [
+      log: process.env['NODE_ENV'] === 'development' ? [
         {
           emit: 'event',
           level: 'query',
@@ -80,7 +80,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
    * Ejecuta una transacción con retry automático
    */
   async executeTransaction<T>(
-    fn: (prisma: Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use'>) => Promise<T>,
+    fn: (prisma: any) => Promise<T>,
     maxRetries = 3,
   ): Promise<T> {
     let lastError: Error;

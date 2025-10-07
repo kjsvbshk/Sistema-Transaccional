@@ -41,7 +41,11 @@ export class LeaguesController {
     @Query('sport') sport?: string,
     @Query('country') country?: string,
   ) {
-    return this.leaguesService.findAll({ page, limit, sport, country });
+    const options: any = { page, limit };
+    if (sport) options.sport = sport;
+    if (country) options.country = country;
+    
+    return this.leaguesService.findAll(options);
   }
 
   @Get(':id')
@@ -122,6 +126,9 @@ export class LeaguesController {
     @Query('limit') limit: number = 10,
     @Query('status') status?: string,
   ) {
-    return this.leaguesService.getLeagueEvents(BigInt(id), { page, limit, status });
+    const options: any = { page, limit };
+    if (status) options.status = status;
+    
+    return this.leaguesService.getLeagueEvents(BigInt(id), options);
   }
 }

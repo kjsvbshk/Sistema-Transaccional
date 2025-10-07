@@ -41,7 +41,11 @@ export class TeamsController {
     @Query('search') search?: string,
     @Query('country') country?: string,
   ) {
-    return this.teamsService.findAll({ page, limit, search, country });
+    const options: any = { page, limit };
+    if (search) options.search = search;
+    if (country) options.country = country;
+    
+    return this.teamsService.findAll(options);
   }
 
   @Get(':id')
@@ -118,6 +122,9 @@ export class TeamsController {
     @Query('limit') limit: number = 10,
     @Query('status') status?: string,
   ) {
-    return this.teamsService.getTeamEvents(BigInt(id), { page, limit, status });
+    const options: any = { page, limit };
+    if (status) options.status = status;
+    
+    return this.teamsService.getTeamEvents(BigInt(id), options);
   }
 }

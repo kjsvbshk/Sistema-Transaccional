@@ -14,7 +14,7 @@ export class JwtRefreshGuard extends AuthGuard('jwt') {
     super();
   }
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  override async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
 
@@ -28,7 +28,7 @@ export class JwtRefreshGuard extends AuthGuard('jwt') {
 
       // Verificar que el usuario existe y está activo
       const user = await this.prisma.usuario.findUnique({
-        where: { id: BigInt(payload.sub) },
+        where: { id: BigInt(payload.sub || '0') },
       });
 
       if (!user) {
