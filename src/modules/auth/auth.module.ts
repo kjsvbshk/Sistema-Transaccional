@@ -31,7 +31,12 @@ import { JwtService } from './services/jwt.service';
       {
         name: 'login',
         ttl: 60000, // 1 minuto
-        limit: 5, // 5 intentos por minuto
+        limit: 3, // 3 intentos por minuto para login
+      },
+      {
+        name: 'register',
+        ttl: 300000, // 5 minutos
+        limit: 2, // 2 registros por 5 minutos
       },
     ]),
   ],

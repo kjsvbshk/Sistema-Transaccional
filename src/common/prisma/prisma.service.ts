@@ -7,7 +7,12 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   constructor() {
     super({
-      log: [
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL + '?connection_limit=20&pool_timeout=20&connect_timeout=10'
+        }
+      },
+      log: process.env.NODE_ENV === 'development' ? [
         {
           emit: 'event',
           level: 'query',
@@ -19,6 +24,15 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         {
           emit: 'event',
           level: 'info',
+        },
+        {
+          emit: 'event',
+          level: 'warn',
+        },
+      ] : [
+        {
+          emit: 'event',
+          level: 'error',
         },
         {
           emit: 'event',
@@ -74,8 +88,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         return await this.$transaction(fn, {
-          maxWait: 5000, // 5 segundos
-          timeout: 10000, // 10 segundos
+          maxWait: 2000, // 2 segundos
+          timeout: 5000, // 5 segundos
         });
       } catch (error) {
         lastError = error as Error;

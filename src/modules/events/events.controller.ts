@@ -37,12 +37,17 @@ export class EventsController {
     description: 'Lista de eventos obtenida exitosamente',
   })
   async findAll(
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
+    @Query('page') pageParam?: string,
+    @Query('limit') limitParam?: string,
     @Query('status') status?: string,
-    @Query('league') league?: number,
-    @Query('team') team?: number,
+    @Query('league') leagueParam?: string,
+    @Query('team') teamParam?: string,
   ) {
+    const page = pageParam ? parseInt(pageParam, 10) : 1;
+    const limit = limitParam ? parseInt(limitParam, 10) : 10;
+    const league = leagueParam ? parseInt(leagueParam, 10) : undefined;
+    const team = teamParam ? parseInt(teamParam, 10) : undefined;
+    
     return this.eventsService.findAll({ page, limit, status, league, team });
   }
 

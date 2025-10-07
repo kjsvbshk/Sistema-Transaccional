@@ -209,6 +209,37 @@ export class AuthService {
     };
   }
 
+  async getCurrentUser(userId: bigint): Promise<any> {
+    const user = await this.prisma.usuario.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        correo: true,
+        nombre: true,
+        estado: true,
+        creadoEn: true,
+        actualizadoEn: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Usuario no encontrado');
+    }
+
+    if (user.estado !== 'activo') {
+      throw new UnauthorizedException('Usuario inactivo');
+    }
+
+    return {
+      id: user.id.toString(),
+      email: user.correo,
+      name: user.nombre,
+      status: user.estado,
+      createdAt: user.creadoEn,
+      updatedAt: user.actualizadoEn,
+    };
+  }
+
   private async createSession(userId: bigint, refreshToken: string): Promise<void> {
     const refreshTokenHash = await this.passwordService.hashPassword(refreshToken);
     const expiresAt = new Date();

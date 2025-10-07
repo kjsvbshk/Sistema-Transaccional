@@ -4,6 +4,8 @@ import { Strategy, ExtractJwt } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { JwtService } from '../services/jwt.service';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -15,25 +17,27 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'your-super-secret-jwt-key-for-development-only',
-      algorithms: ['HS256'],
-      passReqToCallback: true,
+      secretOrKey: JwtStrategy.getPublicKey(),
+      algorithms: ['RS256', 'HS256'], // Soporte para ambos algoritmos
     });
   }
 
-  async validate(req: any, payload: any) {
+  private static getPublicKey(): string {
     try {
-      // Verificar el token usando nuestro servicio JWT
-      const token = ExtractJwt.fromAuthHeaderAsBearerToken()(req);
-      if (!token) {
-        throw new UnauthorizedException('Token no proporcionado');
-      }
+      // Intentar cargar la clave pública RSA
+      const publicKeyPath = process.env.JWT_PUBLIC_KEY_PATH || join(process.cwd(), 'keys', 'public.pem');
+      return readFileSync(publicKeyPath, 'utf8');
+    } catch (error) {
+      // Fallback a clave secreta simple
+      return process.env.JWT_SECRET || 'your-super-secret-jwt-key-for-development-only';
+    }
+  }
 
-      const verifiedPayload = await this.jwtService.verifyAccessToken(token);
-
+  async validate(payload: any) {
+    try {
       // Verificar que el usuario existe y está activo
       const user = await this.prisma.usuario.findUnique({
-        where: { id: BigInt(verifiedPayload.sub) },
+        where: { id: BigInt(payload.sub) },
       });
 
       if (!user) {

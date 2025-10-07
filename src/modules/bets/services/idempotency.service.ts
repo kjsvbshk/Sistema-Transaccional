@@ -7,9 +7,16 @@ export class IdempotencyService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async checkIdempotency(key: string) {
-    const existing = await this.prisma.claveIdempotencia.findUnique({
-      where: { clave: key },
+  async checkIdempotency(key: string, ttlSeconds = 3600) {
+    const ttlDate = new Date(Date.now() - ttlSeconds * 1000);
+    
+    const existing = await this.prisma.claveIdempotencia.findFirst({
+      where: {
+        clave: key,
+        vistoPorPrimeraVez: {
+          gte: ttlDate,
+        },
+      },
     });
 
     if (existing && existing.resultado) {

@@ -1,5 +1,6 @@
 import {
   Controller,
+  Get,
   Post,
   Body,
   UseGuards,
@@ -172,5 +173,40 @@ export class AuthController {
   })
   async logout(@Request() req) {
     return this.authService.logout(req.user);
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Obtener información del usuario actual' })
+  @ApiResponse({
+    status: 200,
+    description: 'Información del usuario obtenida exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            email: { type: 'string' },
+            name: { type: 'string' },
+            status: { type: 'string' },
+            createdAt: { type: 'string' },
+            updatedAt: { type: 'string' },
+          },
+        },
+        timestamp: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Token de acceso inválido o usuario no encontrado',
+  })
+  async getCurrentUser(@Request() req) {
+    return this.authService.getCurrentUser(req.user.id);
   }
 }

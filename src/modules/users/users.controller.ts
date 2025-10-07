@@ -37,11 +37,19 @@ export class UsersController {
     description: 'Lista de usuarios obtenida exitosamente',
   })
   async findAll(
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
+    @Query('page', ParseIntPipe) page: number = 1,
+    @Query('limit', ParseIntPipe) limit: number = 10,
     @Query('search') search?: string,
   ) {
-    return this.usersService.findAll({ page, limit, search });
+    // Validar que page y limit sean números válidos
+    const validPage = isNaN(page) || page < 1 ? 1 : page;
+    const validLimit = isNaN(limit) || limit < 1 ? 10 : limit;
+    
+    return this.usersService.findAll({ 
+      page: validPage, 
+      limit: validLimit, 
+      search 
+    });
   }
 
   @Get(':id')

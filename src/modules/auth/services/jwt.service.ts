@@ -1,32 +1,76 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
+import { SignJWT, jwtVerify, importPKCS8, importSPKI, type JWTPayload } from 'jose';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 @Injectable()
-export class JwtService {
+export class JwtService implements OnModuleInit {
   private readonly logger = new Logger(JwtService.name);
-  private secretKey: Uint8Array;
+  private privateKey: any;
+  private publicKey: any;
+  private isRSA: boolean = false;
+  private keysLoaded: boolean = false;
 
-  constructor(private readonly configService: ConfigService) {
-    this.loadSecret();
+  constructor(private readonly configService: ConfigService) {}
+
+  async onModuleInit() {
+    await this.loadKeys();
   }
 
-  private loadSecret(): void {
+  private async loadKeys(): Promise<void> {
     try {
-      // Usar una clave secreta simple para desarrollo
-      const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key-for-development-only';
-      this.secretKey = new TextEncoder().encode(secret);
-      this.logger.log('✅ JWT secret loaded successfully');
+      // Cargar claves RSA desde archivos
+      const privateKeyPath = process.env.JWT_PRIVATE_KEY_PATH || join(process.cwd(), 'keys', 'private.pem');
+      const publicKeyPath = process.env.JWT_PUBLIC_KEY_PATH || join(process.cwd(), 'keys', 'public.pem');
+      
+      const privateKeyPem = readFileSync(privateKeyPath, 'utf8');
+      const publicKeyPem = readFileSync(publicKeyPath, 'utf8');
+      
+      // Guardar las claves PEM para convertir después
+      this.privateKey = privateKeyPem;
+      this.publicKey = publicKeyPem;
+      this.isRSA = true;
+      
+      this.keysLoaded = true;
+      this.logger.log('✅ JWT RSA keys loaded successfully');
     } catch (error) {
-      this.logger.error('❌ Failed to load JWT secret', error);
-      throw new Error('JWT secret not found.');
+      this.logger.error('❌ Failed to load JWT keys', error);
+      // Fallback a clave secreta simple si las claves RSA no están disponibles
+      const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key-for-development-only';
+      this.privateKey = secret;
+      this.publicKey = secret;
+      this.isRSA = false;
+      this.keysLoaded = true;
+      this.logger.warn('⚠️ Using fallback JWT secret');
     }
+  }
+
+  private ensureKeysLoaded(): void {
+    if (!this.keysLoaded) {
+      throw new Error('JWT keys not loaded yet. Service is not ready.');
+    }
+  }
+
+  private async getPrivateKey() {
+    if (this.isRSA) {
+      return await importPKCS8(this.privateKey, 'RS256');
+    }
+    return new TextEncoder().encode(this.privateKey);
+  }
+
+  private async getPublicKey() {
+    if (this.isRSA) {
+      return await importSPKI(this.publicKey, 'RS256');
+    }
+    return new TextEncoder().encode(this.publicKey);
   }
 
   /**
    * Genera un access token JWT
    */
   async generateAccessToken(user: any): Promise<string> {
+    this.ensureKeysLoaded();
     const expiresIn = this.configService.get<string>('jwt.accessTokenExpiresIn', '15m');
     const now = Math.floor(Date.now() / 1000);
 
@@ -40,11 +84,14 @@ export class JwtService {
     };
 
     try {
+      const algorithm = this.isRSA ? 'RS256' : 'HS256';
+      const key = await this.getPrivateKey();
+      
       const jwt = await new SignJWT(payload)
-        .setProtectedHeader({ alg: 'HS256' })
+        .setProtectedHeader({ alg: algorithm })
         .setIssuedAt()
         .setExpirationTime(expiresIn)
-        .sign(this.secretKey);
+        .sign(key);
 
       return jwt;
     } catch (error) {
@@ -57,6 +104,7 @@ export class JwtService {
    * Genera un refresh token JWT
    */
   async generateRefreshToken(user: any): Promise<string> {
+    this.ensureKeysLoaded();
     const expiresIn = this.configService.get<string>('jwt.refreshTokenExpiresIn', '7d');
     const now = Math.floor(Date.now() / 1000);
 
@@ -69,11 +117,14 @@ export class JwtService {
     };
 
     try {
+      const algorithm = this.isRSA ? 'RS256' : 'HS256';
+      const key = await this.getPrivateKey();
+      
       const jwt = await new SignJWT(payload)
-        .setProtectedHeader({ alg: 'HS256' })
+        .setProtectedHeader({ alg: algorithm })
         .setIssuedAt()
         .setExpirationTime(expiresIn)
-        .sign(this.secretKey);
+        .sign(key);
 
       return jwt;
     } catch (error) {
@@ -86,9 +137,13 @@ export class JwtService {
    * Verifica y decodifica un JWT
    */
   async verifyToken(token: string): Promise<JWTPayload> {
+    this.ensureKeysLoaded();
     try {
-      const { payload } = await jwtVerify(token, this.secretKey, {
-        algorithms: ['HS256'],
+      const algorithm = this.isRSA ? 'RS256' : 'HS256';
+      const key = await this.getPublicKey();
+      
+      const { payload } = await jwtVerify(token, key, {
+        algorithms: [algorithm],
       });
 
       return payload;
@@ -123,6 +178,7 @@ export class JwtService {
 
     return payload;
   }
+
 
   /**
    * Convierte una cadena de expiración a segundos
