@@ -34,6 +34,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       // Verificar que el usuario existe y está activo
       const user = await this.prisma.usuario.findUnique({
         where: { id: BigInt(payload.sub) },
+        include: {
+          usuariosRoles: {
+            include: {
+              rol: {
+                include: {
+                  rolesPermisos: {
+                    include: {
+                      permiso: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!user) {
@@ -44,11 +59,25 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         throw new UnauthorizedException('Usuario inactivo');
       }
 
+      // Extraer roles y permisos
+      const roles = user.usuariosRoles.map((userRole) => ({
+        id: userRole.rol.id.toString(),
+        name: userRole.rol.nombre,
+        permissions: userRole.rol.rolesPermisos.map((rp) => rp.permiso.codigo),
+      }));
+
+      // Crear lista plana de permisos
+      const permissions = user.usuariosRoles.flatMap((userRole) =>
+        userRole.rol.rolesPermisos.map((rp) => rp.permiso.codigo)
+      );
+
       return {
         id: user.id.toString(),
         email: user.correo,
         name: user.nombre,
         status: user.estado,
+        roles,
+        permissions: [...new Set(permissions)], // Eliminar duplicados
       };
     } catch (error) {
       throw new UnauthorizedException('Token inválido');

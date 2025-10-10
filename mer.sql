@@ -2,16 +2,8 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS citext;
 
 -- =========================
--- ORGANIZACIONES Y USUARIOS
+-- USUARIOS Y AUTENTICACIÓN
 -- =========================
-
-CREATE TABLE IF NOT EXISTS organizaciones (
-    id bigserial PRIMARY KEY,
-    nombre text NOT NULL UNIQUE,
-    estado text NOT NULL DEFAULT 'activa',
-    creado_en timestamptz DEFAULT now(),
-    actualizado_en timestamptz DEFAULT now()
-);
 
 CREATE TABLE IF NOT EXISTS usuarios (
     id bigserial PRIMARY KEY,
@@ -21,15 +13,6 @@ CREATE TABLE IF NOT EXISTS usuarios (
     contrasena_hash text NOT NULL,
     creado_en timestamptz DEFAULT now(),
     actualizado_en timestamptz DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS membresias (
-    id bigserial PRIMARY KEY,
-    organizacion_id bigint NOT NULL REFERENCES organizaciones(id) ON DELETE CASCADE,
-    usuario_id bigint NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-    rol_default_id bigint,
-    creado_en timestamptz DEFAULT now(),
-    CONSTRAINT membresias_unicas UNIQUE (organizacion_id, usuario_id)
 );
 
 -- ===================
@@ -53,6 +36,15 @@ CREATE TABLE IF NOT EXISTS roles_permisos (
     rol_id bigint NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
     permiso_id bigint NOT NULL REFERENCES permisos(id) ON DELETE CASCADE,
     CONSTRAINT roles_permisos_unicos UNIQUE (rol_id, permiso_id)
+);
+
+-- Relación usuarios-roles (muchos a muchos)
+CREATE TABLE IF NOT EXISTS usuarios_roles (
+    id bigserial PRIMARY KEY,
+    usuario_id bigint NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    rol_id bigint NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    creado_en timestamptz DEFAULT now(),
+    CONSTRAINT usuarios_roles_unicos UNIQUE (usuario_id, rol_id)
 );
 
 -- ===================
@@ -79,7 +71,7 @@ CREATE TABLE IF NOT EXISTS bitacora_autenticacion (
 );
 
 -- ======================
--- BILLETERAS SIMULADAS $
+-- BILLETERAS Y TRANSACCIONES
 -- ======================
 
 CREATE TABLE IF NOT EXISTS billeteras (
@@ -90,47 +82,22 @@ CREATE TABLE IF NOT EXISTS billeteras (
     actualizado_en timestamptz DEFAULT now()
 );
 
--- ===================
--- API KEYS Y USO
--- ===================
-
-CREATE TABLE IF NOT EXISTS llaves_api (
+CREATE TABLE IF NOT EXISTS transacciones_wallet (
     id bigserial PRIMARY KEY,
-    usuario_id bigint NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-    organizacion_id bigint NOT NULL REFERENCES organizaciones(id) ON DELETE CASCADE,
-    hash_llave text NOT NULL UNIQUE,
-    alcances text[] NOT NULL DEFAULT '{}',
-    activa boolean DEFAULT true,
-    ultimo_uso timestamptz,
+    billetera_id bigint NOT NULL REFERENCES billeteras(id) ON DELETE CASCADE,
+    tipo text NOT NULL, -- 'deposito', 'retiro', 'apuesta', 'ganancia'
+    monto numeric(14,2) NOT NULL,
+    descripcion text,
+    referencia text, -- ID de apuesta o referencia externa
     creado_en timestamptz DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS uso_api (
-    id bigserial PRIMARY KEY,
-    llave_id bigint NOT NULL REFERENCES llaves_api(id) ON DELETE CASCADE,
-    periodo text NOT NULL,
-    inicio_periodo timestamptz NOT NULL,
-    contador bigint DEFAULT 0,
-    CONSTRAINT uso_api_unico UNIQUE (llave_id, periodo, inicio_periodo)
-);
-
-CREATE TABLE IF NOT EXISTS limites_api (
-    id bigserial PRIMARY KEY,
-    llave_id bigint NOT NULL REFERENCES llaves_api(id) ON DELETE CASCADE,
-    inicio_ventana timestamptz NOT NULL,
-    duracion_segundos int NOT NULL,
-    capacidad int NOT NULL,
-    tokens int NOT NULL,
-    CONSTRAINT limites_unicos UNIQUE (llave_id, inicio_ventana, duracion_segundos)
-);
-
 -- ===============
--- AUDITORÍA
+-- AUDITORÍA BÁSICA
 -- ===============
 
 CREATE TABLE IF NOT EXISTS bitacora (
     id bigserial PRIMARY KEY,
-    organizacion_id bigint REFERENCES organizaciones(id) ON DELETE SET NULL,
     usuario_actor_id bigint REFERENCES usuarios(id) ON DELETE SET NULL,
     entidad text NOT NULL,
     entidad_id text NOT NULL,
@@ -198,7 +165,6 @@ CREATE TABLE IF NOT EXISTS claves_idempotencia (
 
 CREATE TABLE IF NOT EXISTS solicitudes (
     id bigserial PRIMARY KEY,
-    organizacion_id bigint NOT NULL REFERENCES organizaciones(id),
     usuario_id bigint NOT NULL REFERENCES usuarios(id),
     evento_id bigint NOT NULL REFERENCES eventos(id),
     mercado_id bigint NOT NULL REFERENCES mercados(id),
@@ -220,135 +186,36 @@ CREATE TABLE IF NOT EXISTS eventos_solicitud (
     creado_en timestamptz DEFAULT now()
 );
 
--- =========
--- CUOTAS
--- =========
-
-CREATE TABLE IF NOT EXISTS cuotas_snapshots (
-    id bigserial PRIMARY KEY,
-    solicitud_id bigint NOT NULL REFERENCES solicitudes(id) ON DELETE CASCADE,
-    tomado_en timestamptz DEFAULT now(),
-    resumen_fuente jsonb DEFAULT '{}'::jsonb
-);
-
-CREATE TABLE IF NOT EXISTS cuotas_lineas (
-    id bigserial PRIMARY KEY,
-    snapshot_id bigint NOT NULL REFERENCES cuotas_snapshots(id) ON DELETE CASCADE,
-    proveedor_id bigint NOT NULL,
-    seleccion text NOT NULL,
-    precio numeric(10,4) NOT NULL,
-    probabilidad_implicita numeric(6,4),
-    recolectado_en timestamptz DEFAULT now()
-);
-
--- ==============
--- PREDICCIONES
--- ==============
-
-CREATE TABLE IF NOT EXISTS versiones_modelo (
-    id bigserial PRIMARY KEY,
-    version text NOT NULL UNIQUE,
-    desplegado_en timestamptz NOT NULL,
-    metadata jsonb DEFAULT '{}'::jsonb
-);
-
-CREATE TABLE IF NOT EXISTS predicciones (
-    id bigserial PRIMARY KEY,
-    solicitud_id bigint NOT NULL REFERENCES solicitudes(id) ON DELETE CASCADE,
-    version_modelo_id bigint NOT NULL REFERENCES versiones_modelo(id),
-    payload jsonb NOT NULL,
-    puntaje_calidad numeric(6,4),
-    expira_en timestamptz,
-    creado_en timestamptz DEFAULT now(),
-    CONSTRAINT predicciones_unicas UNIQUE (solicitud_id)
-);
-
--- ==============
--- PROVEEDORES
--- ==============
-
-CREATE TABLE IF NOT EXISTS proveedores (
-    id bigserial PRIMARY KEY,
-    nombre text NOT NULL UNIQUE,
-    url_base text NOT NULL,
-    activo boolean DEFAULT true,
-    creado_en timestamptz DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS credenciales_proveedor (
-    id bigserial PRIMARY KEY,
-    proveedor_id bigint NOT NULL REFERENCES proveedores(id) ON DELETE CASCADE,
-    organizacion_id bigint NOT NULL REFERENCES organizaciones(id) ON DELETE CASCADE,
-    api_key_mascarada text,
-    meta jsonb DEFAULT '{}'::jsonb,
-    creado_en timestamptz DEFAULT now(),
-    CONSTRAINT credenciales_unicas UNIQUE (proveedor_id, organizacion_id)
-);
-
-CREATE TABLE IF NOT EXISTS endpoints_proveedor (
-    id bigserial PRIMARY KEY,
-    proveedor_id bigint NOT NULL REFERENCES proveedores(id) ON DELETE CASCADE,
-    tipo_endpoint text NOT NULL,
-    ruta text NOT NULL,
-    timeout_ms int DEFAULT 500,
-    CONSTRAINT endpoints_unicos UNIQUE (proveedor_id, tipo_endpoint, ruta)
-);
-
-CREATE TABLE IF NOT EXISTS salud_proveedor (
-    id bigserial PRIMARY KEY,
-    proveedor_id bigint NOT NULL REFERENCES proveedores(id) ON DELETE CASCADE,
-    chequeado_en timestamptz DEFAULT now(),
-    latencia_ms int,
-    ok boolean NOT NULL,
-    codigo_error text
-);
-
 -- ====================
--- MENSAJERÍA / OUTBOX
+-- ÍNDICES PARA RENDIMIENTO
 -- ====================
 
-CREATE TABLE IF NOT EXISTS outbox (
-    id bigserial PRIMARY KEY,
-    tipo_agregado text NOT NULL,
-    agregado_id bigint NOT NULL,
-    tipo_evento text NOT NULL,
-    payload jsonb NOT NULL,
-    publicado boolean DEFAULT false,
-    creado_en timestamptz DEFAULT now()
-);
+-- Índices para autenticación
+CREATE INDEX IF NOT EXISTS idx_usuarios_correo ON usuarios(correo);
+CREATE INDEX IF NOT EXISTS idx_sesiones_usuario_id ON sesiones(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_sesiones_refresh_token ON sesiones(refresh_token_hash);
+CREATE INDEX IF NOT EXISTS idx_bitacora_auth_usuario_id ON bitacora_autenticacion(usuario_id);
 
-CREATE TABLE IF NOT EXISTS bandeja_entrada (
-    id bigserial PRIMARY KEY,
-    fuente text NOT NULL,
-    id_evento_externo text NOT NULL,
-    recibido_en timestamptz DEFAULT now(),
-    estado text NOT NULL DEFAULT 'procesado',
-    CONSTRAINT bandeja_unica UNIQUE (fuente, id_evento_externo)
-);
+-- Índices para billeteras
+CREATE INDEX IF NOT EXISTS idx_billeteras_usuario_id ON billeteras(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_transacciones_billetera_id ON transacciones_wallet(billetera_id);
+CREATE INDEX IF NOT EXISTS idx_transacciones_tipo ON transacciones_wallet(tipo);
+CREATE INDEX IF NOT EXISTS idx_transacciones_creado_en ON transacciones_wallet(creado_en);
 
--- ====================
--- WEBHOOKS
--- ====================
+-- Índices para catálogo deportivo
+CREATE INDEX IF NOT EXISTS idx_eventos_liga_id ON eventos(liga_id);
+CREATE INDEX IF NOT EXISTS idx_eventos_inicia_en ON eventos(inicia_en);
+CREATE INDEX IF NOT EXISTS idx_mercados_evento_id ON mercados(evento_id);
 
-CREATE TABLE IF NOT EXISTS subscripciones_webhook (
-    id bigserial PRIMARY KEY,
-    organizacion_id bigint NOT NULL REFERENCES organizaciones(id) ON DELETE CASCADE,
-    tipo_evento text NOT NULL,
-    url_destino text NOT NULL,
-    secreto text NOT NULL,
-    activo boolean DEFAULT true,
-    creado_en timestamptz DEFAULT now()
-);
+-- Índices para apuestas
+CREATE INDEX IF NOT EXISTS idx_solicitudes_usuario_id ON solicitudes(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_solicitudes_evento_id ON solicitudes(evento_id);
+CREATE INDEX IF NOT EXISTS idx_solicitudes_estado ON solicitudes(estado);
+CREATE INDEX IF NOT EXISTS idx_eventos_solicitud_solicitud_id ON eventos_solicitud(solicitud_id);
 
-CREATE TABLE IF NOT EXISTS entregas_webhook (
-    id bigserial PRIMARY KEY,
-    subscripcion_id bigint NOT NULL REFERENCES subscripciones_webhook(id) ON DELETE CASCADE,
-    outbox_id bigint NOT NULL REFERENCES outbox(id) ON DELETE CASCADE,
-    intento int DEFAULT 1,
-    estado text NOT NULL,
-    codigo_respuesta int,
-    proximo_reintento timestamptz,
-    creado_en timestamptz DEFAULT now()
-);
+-- Índices para auditoría
+CREATE INDEX IF NOT EXISTS idx_bitacora_usuario_actor_id ON bitacora(usuario_actor_id);
+CREATE INDEX IF NOT EXISTS idx_bitacora_entidad ON bitacora(entidad);
+CREATE INDEX IF NOT EXISTS idx_bitacora_creado_en ON bitacora(creado_en);
 
 END;

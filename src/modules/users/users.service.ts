@@ -85,18 +85,18 @@ export class UsersService {
         estado: true,
         creadoEn: true,
         actualizadoEn: true,
-        membresias: {
+        usuariosRoles: {
           include: {
-            organizacion: {
+            rol: {
               select: {
                 id: true,
                 nombre: true,
-                estado: true,
+                descripcion: true,
               },
             },
           },
         },
-      },
+      } as any,
     });
 
     if (!user) {
@@ -104,17 +104,17 @@ export class UsersService {
     }
 
     return {
-      id: user.id.toString(),
-      email: user.correo,
-      name: user.nombre,
-      status: user.estado,
-      createdAt: user.creadoEn,
-      updatedAt: user.actualizadoEn,
-      memberships: user.membresias.map((membership) => ({
-        organizationId: membership.organizacion.id.toString(),
-        organizationName: membership.organizacion.nombre,
-        organizationStatus: membership.organizacion.estado,
-        joinedAt: membership.creadoEn,
+      id: (user as any)['id'].toString(),
+      email: (user as any)['correo'],
+      name: (user as any)['nombre'],
+      status: (user as any)['estado'],
+      createdAt: (user as any)['creadoEn'],
+      updatedAt: (user as any)['actualizadoEn'],
+      roles: ((user as any)['usuariosRoles'] || []).map((userRole: any) => ({
+        roleId: userRole.rol.id.toString(),
+        roleName: userRole.rol.nombre,
+        roleDescription: userRole.rol.descripcion,
+        assignedAt: userRole.creadoEn,
       })),
     };
   }
@@ -251,8 +251,28 @@ export class UsersService {
       throw new NotFoundException('Rol no encontrado');
     }
 
-    // TODO: Implementar tabla de usuarios_roles para asignar roles a usuarios
-    // Por ahora, solo retornamos éxito
+    // Verificar si el usuario ya tiene este rol
+    const existingRole = await (this.prisma as any).usuarioRol.findUnique({
+      where: {
+        usuarios_roles_unicos: {
+          usuarioId: userId,
+          rolId: roleId,
+        },
+      },
+    });
+
+    if (existingRole) {
+      throw new ConflictException('El usuario ya tiene este rol asignado');
+    }
+
+    // Asignar rol al usuario
+    await (this.prisma as any).usuarioRol.create({
+      data: {
+        usuarioId: userId,
+        rolId: roleId,
+      },
+    });
+
     this.logger.log(`Rol ${roleId} asignado al usuario ${userId}`);
 
     return {
@@ -272,7 +292,39 @@ export class UsersService {
       throw new NotFoundException('Usuario no encontrado');
     }
 
-    // TODO: Implementar tabla de usuarios_roles para remover roles de usuarios
+    // Verificar que el rol existe
+    const role = await this.prisma.rol.findUnique({
+      where: { id: roleId },
+    });
+
+    if (!role) {
+      throw new NotFoundException('Rol no encontrado');
+    }
+
+    // Verificar si el usuario tiene este rol asignado
+    const existingRole = await (this.prisma as any).usuarioRol.findUnique({
+      where: {
+        usuarios_roles_unicos: {
+          usuarioId: userId,
+          rolId: roleId,
+        },
+      },
+    });
+
+    if (!existingRole) {
+      throw new NotFoundException('El usuario no tiene este rol asignado');
+    }
+
+    // Remover rol del usuario
+    await (this.prisma as any).usuarioRol.delete({
+      where: {
+        usuarios_roles_unicos: {
+          usuarioId: userId,
+          rolId: roleId,
+        },
+      },
+    });
+
     this.logger.log(`Rol ${roleId} removido del usuario ${userId}`);
 
     return {
@@ -292,11 +344,43 @@ export class UsersService {
       throw new NotFoundException('Usuario no encontrado');
     }
 
-    // TODO: Implementar consulta de roles del usuario
-    // Por ahora, retornamos un array vacío
+    // Obtener roles del usuario con sus permisos
+    const userRoles = await (this.prisma as any).usuarioRol.findMany({
+      where: { usuarioId: userId },
+      include: {
+        rol: {
+          include: {
+            rolesPermisos: {
+              include: {
+                permiso: {
+                  select: {
+                    id: true,
+                    codigo: true,
+                    descripcion: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const roles = userRoles.map((userRole: any) => ({
+      id: userRole.rol.id.toString(),
+      name: userRole.rol.nombre,
+      description: userRole.rol.descripcion,
+      assignedAt: userRole.creadoEn,
+      permissions: userRole.rol.rolesPermisos.map((rp: any) => ({
+        id: rp.permiso.id.toString(),
+        code: rp.permiso.codigo,
+        description: rp.permiso.descripcion,
+      })),
+    }));
+
     return {
       userId: userId.toString(),
-      roles: [],
+      roles,
     };
   }
 

@@ -150,14 +150,19 @@ export class UsersController {
   }
 
   @Get(':id/roles')
-  @ApiOperation({ summary: 'Obtener roles del usuario' })
+  @ApiOperation({ summary: 'Obtener roles de usuario' })
   @ApiResponse({
     status: 200,
-    description: 'Roles del usuario obtenidos exitosamente',
+    description: 'Roles obtenidos exitosamente',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Usuario no encontrado',
   })
   async getUserRoles(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.getUserRoles(BigInt(id));
   }
+
 
   @Get('profile/me')
   @ApiOperation({ summary: 'Obtener perfil del usuario actual' })

@@ -65,16 +65,16 @@ export class AuthService {
         },
       });
 
-      // Crear organización por defecto (opcional)
-      const defaultOrg = await prisma.organizacion.findFirst({
-        where: { nombre: 'Default Organization' },
+      // Asignar rol de usuario por defecto
+      const userRole = await prisma.rol.findUnique({
+        where: { nombre: 'usuario' },
       });
 
-      if (defaultOrg) {
-        await prisma.membresia.create({
+      if (userRole) {
+        await prisma.usuarioRol.create({
           data: {
-            organizacionId: defaultOrg.id,
             usuarioId: user.id,
+            rolId: userRole.id,
           },
         });
       }
